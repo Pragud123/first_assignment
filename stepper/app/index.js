@@ -27,12 +27,79 @@ const startOfDay = () => {
   return d;
 };
 
+// fire base
+import { initializeApp, getApps } from 'firebase/app';
+import {
+  initializeAuth,
+  getReactNativePersistence,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
+
+// credentials (ill send)
+const firebaseConfig = {
+  apiKey: "AIzaSyAKVldON8OqrU5h_3Jm5kQKtElHnaNFj4Y",
+  authDomain: "stepapp-9a44c.firebaseapp.com",
+  projectId: "stepapp-9a44c",
+  storageBucket: "stepapp-9a44c.firebasestorage.app",
+  messagingSenderId: "227263979677",
+  appId: "1:227263979677:web:59467b81f9cbf187883474"
+};
+
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});
+
 // notis setup
 Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: false, shouldSetBadge: false }),
 });
 
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  if (authLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center' }]}> 
+        <Text style={styles.title}>Loading…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  return user ? <AuthedApp user={user} /> : <AuthScreen />;
+}
+
+function AuthScreen() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState('signin'); 
+  const [busy, setBusy] = useState(false);
+  const passRef = useRef(null);
+
+  const submit = async () => {
+    if (!email || !password) return Alert.alert('Missing info', 'Please enter email and password');
+    setBusy(true);
+    try {
+      if (mode === 'signin') await signInWithEmailAndPassword(auth, email.trim(), password);
+      else await createUserWithEmailAndPassword(auth, email.trim(), password);
+    } catch (e) {
+      Alert.alert('Auth error', e.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
